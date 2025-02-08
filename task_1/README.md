@@ -1,23 +1,39 @@
 # Part 1: Training VGG-11 on CIFAR-10
 
-## Metrics after running the CNN for one epoch with a batch size of 256 for 196 iterations
+In this part, we trained the VGG-11 model on the CIFAR-10 dataset for one epoch with a batch size of 256. The training was performed over 196 iterations for the full dataset and 40 iterations for a smaller subset. Below are the detailed results for both cases:
 
-Epoch [1], Iteration [20/196], Loss: 3.3479
-Epoch [1], Iteration [40/196], Loss: 2.5626
-Epoch [1], Iteration [60/196], Loss: 2.2670
-Epoch [1], Iteration [80/196], Loss: 2.3202
-Epoch [1], Iteration [100/196], Loss: 2.2707
-Epoch [1], Iteration [120/196], Loss: 2.2434
-Epoch [1], Iteration [140/196], Loss: 2.2375
-Epoch [1], Iteration [160/196], Loss: 2.2207
-Epoch [1], Iteration [180/196], Loss: 2.2134
-Epoch [1] completed. Average time per iteration (after discarding first): 2.152791 seconds
-Epoch [1] Training complete. Average Loss: 2.7683, Accuracy: 12.40%
-Test set: Average loss: 2.1665, Accuracy: 1674/10000 (17%)
+## Metrics After Running the CNN for One Epoch (Batch Size: 256, 196 Iterations)
 
-## Metrics after running the CNN for one epoch with a batch size of 256 for 40 iterations
+| Epoch | Iteration | Loss   |
+| ----- | --------- | ------ |
+| 1     | 20/196    | 3.3479 |
+| 1     | 40/196    | 2.5626 |
+| 1     | 60/196    | 2.2670 |
+| 1     | 80/196    | 2.3202 |
+| 1     | 100/196   | 2.2707 |
+| 1     | 120/196   | 2.2434 |
+| 1     | 140/196   | 2.2375 |
+| 1     | 160/196   | 2.2207 |
+| 1     | 180/196   | 2.2134 |
 
-Epoch [1], Iteration [20/196], Loss: 2.8673
-Epoch [1], Iteration [40/196], Loss: 2.3245
-Epoch [1] completed. Average time per iteration (after discarding first): 2.336988 seconds
-Epoch [1] Training complete. Average Loss: 0.9930, Accuracy: 11.51%
+- **Training Summary**:
+  - **Average Loss (Training)**: 2.7683
+  - **Training Accuracy**: 12.40%
+  - **Test Accuracy**: 17.00%
+  - **Average Time per Iteration** (after discarding the first iteration): 2.1528 seconds
+
+---
+
+## Metrics After Running the CNN for One Epoch (Batch Size: 256, 40 Iterations)
+
+| Epoch | Iteration | Loss   |
+| ----- | --------- | ------ |
+| 1     | 20/40     | 2.8673 |
+| 1     | 40/40     | 2.3245 |
+
+- **Training Summary**:
+  - **Average Loss (Training)**: 0.9930
+  - **Training Accuracy**: 11.51%
+  - **Average Time per Iteration** (after discarding the first iteration): 2.3370 seconds
+
+---
