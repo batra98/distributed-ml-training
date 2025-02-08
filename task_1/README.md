@@ -34,6 +34,7 @@ In this part, we trained the VGG-11 model on the CIFAR-10 dataset for one epoch 
 - **Training Summary**:
   - **Average Loss (Training)**: 0.9930
   - **Training Accuracy**: 11.51%
+  - **Test Accuracy**: 14%
   - **Average Time per Iteration** (after discarding the first iteration): 2.3370 seconds
 
 ---
