@@ -1,6 +1,6 @@
 # Part 1: Training VGG-11 on CIFAR-10
 
-In this part, we trained the VGG-11 model on the CIFAR-10 dataset for one epoch with a batch size of 256. The training was performed over 196 iterations for the full dataset and 40 iterations for a smaller subset. Below are the detailed results for both cases:
+In this part, we trained the VGG-11 model on the CIFAR-10 dataset for one epoch with a batch size of 256. Below are the detailed results for both cases:
 
 ## Metrics After Running the CNN for One Epoch (Batch Size: 256, 196 Iterations)
 
