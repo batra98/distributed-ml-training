@@ -1,16 +1,17 @@
 from typing import cast
 import torch
 from torch.nn.modules import CrossEntropyLoss
-from torch.utils.data import DataLoader, DistributedSampler
+from torch.utils.data.dataloader import DataLoader
+from torch.utils.data.distributed import DistributedSampler
 from torchvision import datasets, transforms
 import torch.nn as nn
-from torch.nn.parallel import DistributedDataParallel
 import torch.optim as optim
 import model as mdl
 import time
 import argparse
-import numpy as np
 import torch.distributed as dist
+import numpy as np
+
 
 device = "cpu"
 torch.set_num_threads(4)
@@ -31,7 +32,14 @@ def init_distributed_mode(args):
     )
 
     torch.manual_seed(seed)
-    np.random.seed(seed)
+
+
+def sync_gradients_allreduce(model):
+    """Synchronize gradients using AllReduce."""
+    for param in model.parameters():
+        if param.grad is not None:
+            dist.all_reduce(param.grad, op=dist.ReduceOp.SUM)  # Sum all gradients
+            param.grad /= dist.get_world_size()  # Average gradients
 
 
 def train_model(
@@ -58,8 +66,8 @@ def train_model(
     # remember to exit the train loop at end of the epoch
     for batch_idx, (data, target) in enumerate(train_loader):
         # Your code goes here!
-        if batch_idx >= 40:
-            break  # NOTE: Since shuffle is true we get different samples
+        # if batch_idx >= 40:
+        #    break  # NOTE: Since shuffle is true we get different samples
 
         start_time = time.time()
 
@@ -69,6 +77,7 @@ def train_model(
         loss: torch.Tensor = criterion(output, target)
 
         loss.backward()
+        sync_gradients_allreduce(model)
         optimizer.step()
 
         end_time = time.time()
@@ -126,7 +135,6 @@ def test_model(
     )
 
 
-## NOTE: make it stricter
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -190,8 +198,6 @@ def main():
     )
 
     model = mdl.VGG11().to(device)
-
-    model = DistributedDataParallel(model)
 
     criterion = CrossEntropyLoss().to(device)
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0001)
