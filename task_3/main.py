@@ -11,6 +11,7 @@ import time
 import argparse
 import numpy as np
 import torch.distributed as dist
+from torch.utils.tensorboard.writer import SummaryWriter
 
 device = "cpu"
 torch.set_num_threads(4)
@@ -40,6 +41,7 @@ def train_model(
     optimizer: optim.Optimizer,
     criterion: CrossEntropyLoss,
     epoch: int,
+    writer: SummaryWriter | None,
 ):
     """
     model (torch.nn.module): The model created to train
@@ -55,37 +57,62 @@ def train_model(
 
     times = []
 
-    # remember to exit the train loop at end of the epoch
-    for batch_idx, (data, target) in enumerate(train_loader):
-        # Your code goes here!
-        # if batch_idx >= 40:
-        #    break  # NOTE: Since shuffle is true we get different samples
+    with torch.profiler.profile(
+        activities=[torch.profiler.ProfilerActivity.CPU],
+        schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler(
+            "../logs/task_3/profiler"
+        ),
+        record_shapes=True,
+        with_stack=True,
+    ) as prof:
+        # remember to exit the train loop at end of the epoch
+        for batch_idx, (data, target) in enumerate(train_loader):
+            # Your code goes here!
+            # if batch_idx >= 40:
+            #    break  # NOTE: Since shuffle is true we get different samples
 
-        start_time = time.time()
+            start_time = time.time()
 
-        data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
-        output: torch.Tensor = model(data)
-        loss: torch.Tensor = criterion(output, target)
+            data, target = data.to(device), target.to(device)
+            optimizer.zero_grad()
+            output: torch.Tensor = model(data)
+            loss: torch.Tensor = criterion(output, target)
 
-        loss.backward()
-        optimizer.step()
+            loss.backward()
+            optimizer.step()
 
-        end_time = time.time()
-        iteration_time = end_time - start_time
+            end_time = time.time()
+            iteration_time = end_time - start_time
 
-        times.append(iteration_time)
+            times.append(iteration_time)
 
-        running_loss += loss.item()
+            running_loss += loss.item()
 
-        _, predicted = output.max(1)
-        correct += int(predicted.eq(target).sum().item())
-        total += target.size(0)
+            _, predicted = output.max(1)
+            correct += int(predicted.eq(target).sum().item())
+            total += target.size(0)
 
-        if (batch_idx + 1) % 20 == 0:
-            print(
-                f"Epoch [{epoch+1}], Iteration [{batch_idx+1}/{len(train_loader)}], Loss: {loss.item():.4f}"
-            )
+            if (batch_idx + 1) % 20 == 0:
+                print(
+                    f"Epoch [{epoch+1}], Iteration [{batch_idx+1}/{len(train_loader)}], Loss: {loss.item():.4f}"
+                )
+
+            if dist.get_rank() == 0:
+                writer = cast(SummaryWriter, writer)
+                writer.add_scalar(
+                    "Train/Loss", loss.item(), epoch * len(train_loader) + batch_idx
+                )
+                writer.add_scalar(
+                    "Train/Iteration Time",
+                    iteration_time,
+                    epoch * len(train_loader) + batch_idx,
+                )
+                for name, param in model.named_parameters():
+                    writer.add_histogram(f"Params/{name}", param, epoch)
+                    writer.add_histogram(f"Grads/{name}", param.grad, epoch)
+
+            prof.step()
 
     avg_time = sum(times[1:]) / len(times[1:]) if len(times) > 1 else 0.0
     print(
@@ -97,6 +124,12 @@ def train_model(
     print(
         f"Epoch [{epoch+1}] Training complete. Average Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%"
     )
+
+    if dist.get_rank() == 0:
+        writer = cast(SummaryWriter, writer)
+        writer.add_scalar("Train/Avg Loss", avg_loss, epoch)
+        writer.add_scalar("Train/Accuracy", accuracy, epoch)
+        writer.add_scalar("Train/Avg Iteration Time", avg_time, epoch)
 
 
 def test_model(
@@ -196,13 +229,19 @@ def main():
     criterion = CrossEntropyLoss().to(device)
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0001)
 
+    writer = (
+        SummaryWriter(log_dir=f"../logs/task_3/rank_{args.rank}")
+        if args.rank == 0
+        else None
+    )
+
     # Training loop
     for epoch in range(1):
         train_sampler = cast(
             DistributedSampler, train_sampler
         )  # Just to remove typing error
         train_sampler.set_epoch(epoch)
-        train_model(model, train_loader, optimizer, criterion, epoch)
+        train_model(model, train_loader, optimizer, criterion, epoch, writer)
         test_model(model, test_loader, criterion)
 
 

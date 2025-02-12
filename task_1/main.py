@@ -6,7 +6,13 @@ import torch.nn as nn
 import torch.optim as optim
 import model as mdl
 import time
+from torch.profiler import (
+    profile,
+    ProfilerActivity,
+    tensorboard_trace_handler,
+)
 
+from torch.utils.tensorboard.writer import SummaryWriter
 
 device = "cpu"
 torch.set_num_threads(4)
@@ -20,6 +26,7 @@ def train_model(
     optimizer: optim.Optimizer,
     criterion: CrossEntropyLoss,
     epoch: int,
+    writer: SummaryWriter,
 ):
     """
     model (torch.nn.module): The model created to train
@@ -35,48 +42,78 @@ def train_model(
 
     times = []
 
-    # remember to exit the train loop at end of the epoch
-    for batch_idx, (data, target) in enumerate(train_loader):
-        # Your code goes here!
-        if batch_idx >= 40:
-            break  # NOTE: Since shuffle is true we get different samples
+    with profile(
+        activities=[ProfilerActivity.CPU],
+        schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
+        on_trace_ready=tensorboard_trace_handler("../logs/task_1/profiler"),
+        record_shapes=True,
+        profile_memory=True,
+        with_stack=True,
+        with_flops=True,
+    ) as prof:
+        # remember to exit the train loop at end of the epoch
+        for batch_idx, (data, target) in enumerate(train_loader):
+            # Your code goes here!
+            # if batch_idx >= 40:
+            #    break  # NOTE: Since shuffle is true we get different samples
 
-        start_time = time.time()
+            start_time = time.time()
 
-        data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
-        output: torch.Tensor = model(data)
-        loss: torch.Tensor = criterion(output, target)
+            data, target = data.to(device), target.to(device)
+            optimizer.zero_grad()
 
-        loss.backward()
-        optimizer.step()
+            output: torch.Tensor = model(data)
 
-        end_time = time.time()
-        iteration_time = end_time - start_time
+            loss: torch.Tensor = criterion(output, target)
 
-        times.append(iteration_time)
+            loss.backward()
 
-        running_loss += loss.item()
+            optimizer.step()
 
-        _, predicted = output.max(1)
-        correct += int(predicted.eq(target).sum().item())
-        total += target.size(0)
+            end_time = time.time()
+            iteration_time = end_time - start_time
 
-        if (batch_idx + 1) % 20 == 0:
-            print(
-                f"Epoch [{epoch+1}], Iteration [{batch_idx+1}/{len(train_loader)}], Loss: {loss.item():.4f}"
+            times.append(iteration_time)
+
+            running_loss += loss.item()
+
+            _, predicted = output.max(1)
+            correct += int(predicted.eq(target).sum().item())
+            total += target.size(0)
+
+            if (batch_idx + 1) % 20 == 0:
+                print(
+                    f"Epoch [{epoch+1}], Iteration [{batch_idx+1}/{len(train_loader)}], Loss: {loss.item():.4f}"
+                )
+
+            writer.add_scalar(
+                "Train/Loss", loss.item(), epoch * len(train_loader) + batch_idx
             )
+            writer.add_scalar(
+                "Train/Iteration Time",
+                iteration_time,
+                epoch * len(train_loader) + batch_idx,
+            )
+            for name, param in model.named_parameters():
+                writer.add_histogram(f"Params/{name}", param, epoch)
+                writer.add_histogram(f"Grads/{name}", param.grad, epoch)
 
-    avg_time = sum(times[1:]) / len(times[1:]) if len(times) > 1 else 0.0
-    print(
-        f"Epoch [{epoch+1}] completed. Average time per iteration (after discarding first): {avg_time:.6f} seconds"
-    )
+            prof.step()
 
-    avg_loss = running_loss / len(train_loader)
-    accuracy = 100 * correct / total
-    print(
-        f"Epoch [{epoch+1}] Training complete. Average Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%"
-    )
+        avg_time = sum(times[1:]) / len(times[1:]) if len(times) > 1 else 0.0
+        print(
+            f"Epoch [{epoch+1}] completed. Average time per iteration (after discarding first): {avg_time:.6f} seconds"
+        )
+
+        avg_loss = running_loss / len(train_loader)
+        accuracy = 100 * correct / total
+        print(
+            f"Epoch [{epoch+1}] Training complete. Average Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%"
+        )
+
+        writer.add_scalar("Train/Avg Loss", avg_loss, epoch)
+        writer.add_scalar("Train/Accuracy", accuracy, epoch)
+        writer.add_scalar("Train/Avg Iteration Time", avg_time, epoch)
 
 
 def test_model(
@@ -144,9 +181,12 @@ def main():
     model = mdl.VGG11()
     model.to(device)
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0001)
+
+    writer = SummaryWriter(log_dir="../logs/task_1/rank_0")
+
     # running training for one epoch
     for epoch in range(1):
-        train_model(model, train_loader, optimizer, training_criterion, epoch)
+        train_model(model, train_loader, optimizer, training_criterion, epoch, writer)
         test_model(model, test_loader, training_criterion)
 
 
