@@ -91,7 +91,7 @@ def train_model(
         activities=[torch.profiler.ProfilerActivity.CPU],
         schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
         on_trace_ready=torch.profiler.tensorboard_trace_handler(
-            "../logs/task_2b/profiler"
+            "../logs/task_2a/profiler"
         ),
         record_shapes=True,
         with_stack=True,
@@ -259,7 +259,7 @@ def main():
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0001)
 
     writer = (
-        SummaryWriter(log_dir=f"../logs/task_2b/rank_{args.rank}")
+        SummaryWriter(log_dir=f"../logs/task_2a/rank_{args.rank}")
         if args.rank == 0
         else None
     )
