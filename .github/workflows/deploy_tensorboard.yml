@@ -5,6 +5,10 @@ on:
     branches:
       - feat/profiler
 
+permissions:
+  contents: write # Grant write access to repository contents
+  pages: write # Grant write access to GitHub Pages
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
