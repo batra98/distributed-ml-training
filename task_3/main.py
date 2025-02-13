@@ -61,7 +61,7 @@ def train_model(
         activities=[torch.profiler.ProfilerActivity.CPU],
         schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
         on_trace_ready=torch.profiler.tensorboard_trace_handler(
-            "../logs/task_3/profiler"
+            "../logs_40/task_3/profiler"
         ),
         record_shapes=True,
         with_stack=True,
@@ -69,8 +69,8 @@ def train_model(
         # remember to exit the train loop at end of the epoch
         for batch_idx, (data, target) in enumerate(train_loader):
             # Your code goes here!
-            # if batch_idx >= 40:
-            #    break  # NOTE: Since shuffle is true we get different samples
+            if batch_idx >= 40:
+                break  # NOTE: Since shuffle is true we get different samples
 
             start_time = time.time()
 
@@ -230,7 +230,7 @@ def main():
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0001)
 
     writer = (
-        SummaryWriter(log_dir=f"../logs/task_3/rank_{args.rank}")
+        SummaryWriter(log_dir=f"../logs_40/task_3/rank_{args.rank}")
         if args.rank == 0
         else None
     )

@@ -45,7 +45,7 @@ def train_model(
     with profile(
         activities=[ProfilerActivity.CPU],
         schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
-        on_trace_ready=tensorboard_trace_handler("../logs/task_1/profiler"),
+        on_trace_ready=tensorboard_trace_handler("../logs_40/task_1/profiler"),
         record_shapes=True,
         profile_memory=True,
         with_stack=True,
@@ -54,8 +54,8 @@ def train_model(
         # remember to exit the train loop at end of the epoch
         for batch_idx, (data, target) in enumerate(train_loader):
             # Your code goes here!
-            # if batch_idx >= 40:
-            #    break  # NOTE: Since shuffle is true we get different samples
+            if batch_idx >= 40:
+                break  # NOTE: Since shuffle is true we get different samples
 
             start_time = time.time()
 
@@ -182,7 +182,7 @@ def main():
     model.to(device)
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0001)
 
-    writer = SummaryWriter(log_dir="../logs/task_1/rank_0")
+    writer = SummaryWriter(log_dir="../logs_40/task_1/rank_0")
 
     # running training for one epoch
     for epoch in range(1):
